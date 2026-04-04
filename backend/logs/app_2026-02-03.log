@@ -1,2 +1,0 @@
-2026-02-03 22:07:40.576 | INFO     | app.core.logging:setup_logging:95 | Logging system initialized. Log directory: logs
-2026-02-03 22:07:40.578 | INFO     | app.core.logging:log_function_call:180 | Function call: test | params: {'param1': 'value1'}

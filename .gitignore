@@ -31,9 +31,9 @@ logs/
 *.log
 
 # 模型大文件
-backend/data/models/*.bin
-backend/data/models/*.pt
-backend/data/models/*.safetensors
+backend/data/models/**/*.bin
+backend/data/models/**/*.pt
+backend/data/models/**/*.safetensors
 
 # 测试缓存
 .pytest_cache/
