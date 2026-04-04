@@ -1,0 +1,141 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "股票情绪预测系统监控",
+    "tags": ["stock", "sentiment", "monitoring"],
+    "timezone": "Asia/Shanghai",
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP请求速率",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+            "legendFormat": "{{endpoint}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "HTTP响应时间 (P95)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+            "legendFormat": "{{endpoint}}"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "HTTP状态码分布",
+        "type": "piechart",
+        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(http_requests_total) by (status_code)",
+            "legendFormat": "{{status_code}}"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "当前进行中请求",
+        "type": "gauge",
+        "gridPos": {"x": 6, "y": 8, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(http_requests_in_progress)"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "情感分析统计",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(sentiment_analysis_total[5m])) by (label)",
+            "legendFormat": "{{label}}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "情感分析耗时",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(sentiment_analysis_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(sentiment_analysis_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "P50"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "爬虫采集统计",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 16, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(crawler_comments_collected_total)",
+            "legendFormat": "采集总数"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "缓存命中率",
+        "type": "gauge",
+        "gridPos": {"x": 18, "y": 16, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(cache_hits_total) / (sum(cache_hits_total) + sum(cache_misses_total)) * 100",
+            "legendFormat": "命中率%"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "max": 100,
+            "min": 0,
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "数据库查询耗时",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, operation))",
+            "legendFormat": "{{operation}} P95"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "情绪指数",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "emotion_index",
+            "legendFormat": "{{stock_code}}"
+          }
+        ]
+      }
+    ]
+  }
+}
