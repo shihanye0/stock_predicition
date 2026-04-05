@@ -71,12 +71,11 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - 股票情绪预测系统` : '股票情绪预测系统'
-  
-  // 检查是否需要登录
+
+  // 只检查JWT token，不再允许游客模式
   const token = localStorage.getItem('token')
-  const isGuest = localStorage.getItem('isGuest') === 'true'
-  const isLoggedIn = !!token || isGuest
-  
+  const isLoggedIn = !!token
+
   // 公开页面直接放行
   if (to.meta.public) {
     // 已登录用户访问登录页，跳转到首页
@@ -87,13 +86,13 @@ router.beforeEach((to, from, next) => {
     next()
     return
   }
-  
+
   // 需要登录的页面
   if (!isLoggedIn) {
     next({ name: 'Login' })
     return
   }
-  
+
   next()
 })
 

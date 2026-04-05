@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS stocks (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_industry (industry),
     INDEX idx_market (market)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票信息表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='股票信息表';
 
 -- 评论数据表
 CREATE TABLE IF NOT EXISTS comments (
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS comments (
     INDEX idx_publish_time (publish_time),
     INDEX idx_is_processed (is_processed),
     FOREIGN KEY (stock_code) REFERENCES stocks(stock_code) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评论数据表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论数据表';
 
 -- 情感分析结果表
 CREATE TABLE IF NOT EXISTS sentiments (
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS sentiments (
     INDEX idx_label (label),
     INDEX idx_analyzed_at (analyzed_at),
     FOREIGN KEY (comment_id) REFERENCES comments(comment_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='情感分析结果表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='情感分析结果表';
 
 -- 情绪指标表
 CREATE TABLE IF NOT EXISTS emotions (
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS emotions (
     UNIQUE KEY uk_stock_date_hour (stock_code, stat_date, stat_hour),
     INDEX idx_stat_date (stat_date),
     FOREIGN KEY (stock_code) REFERENCES stocks(stock_code) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='情绪指标表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='情绪指标表';
 
 -- 股票行情表
 CREATE TABLE IF NOT EXISTS quotes (
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS quotes (
     UNIQUE KEY uk_stock_date (stock_code, trade_date),
     INDEX idx_trade_date (trade_date),
     FOREIGN KEY (stock_code) REFERENCES stocks(stock_code) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票行情表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='股票行情表';
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_role (role)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- 用户关注股票表
 CREATE TABLE IF NOT EXISTS user_watchlist (
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS user_watchlist (
     UNIQUE KEY uk_user_stock (user_id, stock_code),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (stock_code) REFERENCES stocks(stock_code) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户关注股票表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户关注股票表';
 
 -- 实验结果表
 CREATE TABLE IF NOT EXISTS experiment_results (
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS experiment_results (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_model_name (model_name),
     INDEX idx_created_at_exp (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='实验结果表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='实验结果表';
 
 -- 方面级情感分析表
 CREATE TABLE IF NOT EXISTS aspect_sentiments (
@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS aspect_sentiments (
     INDEX idx_comment_aspect (comment_id, aspect),
     INDEX idx_aspect (aspect),
     FOREIGN KEY (comment_id) REFERENCES comments(comment_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='方面级情感分析表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='方面级情感分析表';
 
 -- 情绪预警表
 CREATE TABLE IF NOT EXISTS alerts (
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     INDEX idx_is_read (is_read),
     INDEX idx_triggered_at (triggered_at),
     FOREIGN KEY (stock_code) REFERENCES stocks(stock_code) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='情绪预警表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='情绪预警表';
 
 -- 插入示例股票数据
 INSERT INTO stocks (stock_code, stock_name, market, industry) VALUES

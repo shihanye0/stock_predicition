@@ -37,15 +37,15 @@
               <div class="model-scores">
                 <div class="score-bar">
                   <span class="score-label">积极</span>
-                  <el-progress :percentage="(r.scores.positive * 100).toFixed(1) * 1" :color="'#67C23A'" :stroke-width="12" />
+                  <el-progress :percentage="(r.scores.positive * 100).toFixed(1) * 1" :color="'#00e676'" :stroke-width="12" />
                 </div>
                 <div class="score-bar">
                   <span class="score-label">中性</span>
-                  <el-progress :percentage="(r.scores.neutral * 100).toFixed(1) * 1" :color="'#E6A23C'" :stroke-width="12" />
+                  <el-progress :percentage="(r.scores.neutral * 100).toFixed(1) * 1" :color="'#ffab40'" :stroke-width="12" />
                 </div>
                 <div class="score-bar">
                   <span class="score-label">消极</span>
-                  <el-progress :percentage="(r.scores.negative * 100).toFixed(1) * 1" :color="'#F56C6C'" :stroke-width="12" />
+                  <el-progress :percentage="(r.scores.negative * 100).toFixed(1) * 1" :color="'#ff5252'" :stroke-width="12" />
                 </div>
               </div>
               <div class="model-time">耗时: {{ r.elapsed_ms.toFixed(1) }}ms</div>
@@ -138,6 +138,7 @@ import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { experimentApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { darkChartTheme, darkAxisStyle, chartColors } from '@/utils/chart-theme'
 
 // 对比分析
 const compareText = ref('')
@@ -230,14 +231,13 @@ const metricsChartOption = computed(() => {
   const modelNames = comparison.map(c => c.model_name)
   const metrics = ['accuracy', 'f1_score', 'precision_score', 'recall_score']
   const metricLabels = ['准确率', 'F1分数', '精确率', '召回率']
-  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C']
-  
+  const colors = [chartColors.accent, chartColors.bull, chartColors.neutral, chartColors.bear]
+
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { data: metricLabels },
-    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: modelNames },
-    yAxis: { type: 'value', max: 1, axisLabel: { formatter: (v) => (v * 100).toFixed(0) + '%' } },
+    ...darkChartTheme,
+    legend: { ...darkChartTheme.legend, data: metricLabels },
+    xAxis: { type: 'category', data: modelNames, ...darkAxisStyle },
+    yAxis: { type: 'value', max: 1, ...darkAxisStyle, axisLabel: { color: '#8b95a5', formatter: (v) => (v * 100).toFixed(0) + '%' } },
     series: metrics.map((m, i) => ({
       name: metricLabels[i],
       type: 'bar',
@@ -270,16 +270,17 @@ const confusionChartOption = computed(() => {
   const maxVal = Math.max(...data.map(d => d[2]), 1)
   
   return {
-    title: { text: `${target.model_name} 混淆矩阵`, left: 'center', textStyle: { fontSize: 14 } },
-    tooltip: { formatter: (p) => `真实: ${labelsCN[p.value[1]]}<br>预测: ${labelsCN[p.value[0]]}<br>数量: ${p.value[2]}` },
-    xAxis: { type: 'category', data: labelsCN, name: '预测标签', splitArea: { show: true } },
-    yAxis: { type: 'category', data: labelsCN, name: '真实标签', splitArea: { show: true } },
-    visualMap: { min: 0, max: maxVal, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%', inRange: { color: ['#f5f5f5', '#409EFF', '#1a3b5c'] } },
+    ...darkChartTheme,
+    title: { text: `${target.model_name} 混淆矩阵`, left: 'center', textStyle: { fontSize: 14, color: '#e8ecf1' } },
+    tooltip: { ...darkChartTheme.tooltip, formatter: (p) => `真实: ${labelsCN[p.value[1]]}<br>预测: ${labelsCN[p.value[0]]}<br>数量: ${p.value[2]}` },
+    xAxis: { type: 'category', data: labelsCN, name: '预测标签', ...darkAxisStyle, nameTextStyle: { color: '#8b95a5' }, splitArea: { show: true, areaStyle: { color: ['rgba(0,0,0,0)', 'rgba(255,255,255,0.02)'] } } },
+    yAxis: { type: 'category', data: labelsCN, name: '真实标签', ...darkAxisStyle, nameTextStyle: { color: '#8b95a5' }, splitArea: { show: true, areaStyle: { color: ['rgba(0,0,0,0)', 'rgba(255,255,255,0.02)'] } } },
+    visualMap: { min: 0, max: maxVal, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%', textStyle: { color: '#8b95a5' }, inRange: { color: ['#1a2332', '#00d4ff', '#00e676'] } },
     series: [{
       type: 'heatmap',
       data: data,
-      label: { show: true, fontSize: 16, fontWeight: 'bold' },
-      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
+      label: { show: true, fontSize: 16, fontWeight: 'bold', color: '#e8ecf1' },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0, 212, 255, 0.5)' } }
     }]
   }
 })
@@ -308,15 +309,15 @@ onMounted(() => {
   padding: 12px;
 }
 
-.model-card.positive { border-top: 3px solid #67C23A; }
-.model-card.negative { border-top: 3px solid #F56C6C; }
-.model-card.neutral { border-top: 3px solid #E6A23C; }
+.model-card.positive { border-top: 3px solid var(--bull); }
+.model-card.negative { border-top: 3px solid var(--bear); }
+.model-card.neutral { border-top: 3px solid var(--neutral); }
 
 .model-name {
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 12px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .model-label {
@@ -325,7 +326,7 @@ onMounted(() => {
 
 .model-confidence {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   margin-bottom: 12px;
 }
 
@@ -343,7 +344,7 @@ onMounted(() => {
 .score-label {
   width: 30px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .score-bar .el-progress {
@@ -352,7 +353,7 @@ onMounted(() => {
 
 .model-time {
   font-size: 12px;
-  color: #C0C4CC;
+  color: var(--text-muted);
   margin-top: 8px;
 }
 

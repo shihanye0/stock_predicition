@@ -21,7 +21,7 @@
           </div>
           <div class="stat-item">
             <span class="label">情绪强度</span>
-            <span class="value">{{ (emotionSummary.avg_intensity * 100).toFixed(2) || 0 }}%</span>
+            <span class="value">{{ ((emotionSummary.avg_intensity || 0) * 100).toFixed(2) }}%</span>
           </div>
           <div class="stat-item">
             <span class="label">评论总数</span>
@@ -49,7 +49,10 @@
               />
             </div>
           </template>
-          <v-chart :option="trendChartOption" autoresize style="height: 350px" />
+          <div v-if="emotionTrend.length > 0">
+            <v-chart :option="trendChartOption" autoresize style="height: 350px" />
+          </div>
+          <el-empty v-else description="暂无情绪趋势数据" :image-size="120" style="height: 350px; display: flex; align-items: center; justify-content: center;" />
         </el-card>
       </el-col>
       <el-col :span="8">
@@ -57,7 +60,10 @@
           <template #header>
             <span>情感分布</span>
           </template>
-          <v-chart :option="pieChartOption" autoresize style="height: 350px" />
+          <div v-if="emotionSummary.total_comments > 0">
+            <v-chart :option="pieChartOption" autoresize style="height: 350px" />
+          </div>
+          <el-empty v-else description="暂无情感分布数据" :image-size="120" style="height: 350px; display: flex; align-items: center; justify-content: center;" />
         </el-card>
       </el-col>
     </el-row>
@@ -160,6 +166,7 @@ import VChart from 'vue-echarts'
 import { stockApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
+import { darkChartTheme, darkAxisStyle, darkRadarStyle, chartColors, buildLineSeries, buildPieOption } from '@/utils/chart-theme'
 
 const route = useRoute()
 const stockCode = computed(() => route.params.code)
@@ -202,8 +209,10 @@ const aspectRadarOption = computed(() => {
   const aspects = aspectsList.value
   if (!aspects.length) return null
   return {
+    ...darkChartTheme,
     radar: {
-      indicator: aspects.map(a => ({ name: a.aspect, max: Math.max(...aspects.map(x => x.total), 10) }))
+      indicator: aspects.map(a => ({ name: a.aspect, max: Math.max(...aspects.map(x => x.total), 10) })),
+      ...darkRadarStyle
     },
     series: [{
       type: 'radar',
@@ -211,18 +220,18 @@ const aspectRadarOption = computed(() => {
         {
           value: aspects.map(a => a.positive || 0),
           name: '积极',
-          areaStyle: { color: 'rgba(103, 194, 58, 0.3)' },
-          lineStyle: { color: '#67C23A' }
+          areaStyle: { color: 'rgba(0, 230, 118, 0.2)' },
+          lineStyle: { color: chartColors.bull }
         },
         {
           value: aspects.map(a => a.negative || 0),
           name: '消极',
-          areaStyle: { color: 'rgba(245, 108, 108, 0.3)' },
-          lineStyle: { color: '#F56C6C' }
+          areaStyle: { color: 'rgba(255, 82, 82, 0.2)' },
+          lineStyle: { color: chartColors.bear }
         }
       ]
     }],
-    legend: { data: ['积极', '消极'], bottom: 0 }
+    legend: { ...darkChartTheme.legend, data: ['积极', '消极'], bottom: 0 }
   }
 })
 
@@ -231,14 +240,15 @@ const profileRadarOption = computed(() => {
   const radar = profileData.value.radar_data
   if (!radar || !radar.indicators) return null
   return {
-    radar: { indicator: radar.indicators },
+    ...darkChartTheme,
+    radar: { indicator: radar.indicators, ...darkRadarStyle },
     series: [{
       type: 'radar',
       data: [{
         value: radar.values,
         name: '情绪特征',
-        areaStyle: { color: 'rgba(64, 158, 255, 0.3)' },
-        lineStyle: { color: '#409EFF' }
+        areaStyle: { color: 'rgba(0, 212, 255, 0.2)' },
+        lineStyle: { color: chartColors.accent }
       }]
     }]
   }
@@ -252,73 +262,30 @@ const getTagType = (tag) => {
 
 // 图表配置
 const trendChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'axis'
-  },
-  legend: {
-    data: ['看涨指数', '看跌指数', '情绪温度']
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    containLabel: true
-  },
+  ...darkChartTheme,
+  legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数', '情绪温度'] },
   xAxis: {
     type: 'category',
-    data: emotionTrend.value.map(item => item.date)
+    data: emotionTrend.value.map(item => item.date),
+    ...darkAxisStyle
   },
   yAxis: [
-    { type: 'value', max: 100 }
+    { type: 'value', max: 100, ...darkAxisStyle }
   ],
   series: [
-    {
-      name: '看涨指数',
-      type: 'line',
-      smooth: true,
-      itemStyle: { color: '#67C23A' },
-      data: emotionTrend.value.map(item => item.bull_index)
-    },
-    {
-      name: '看跌指数',
-      type: 'line',
-      smooth: true,
-      itemStyle: { color: '#F56C6C' },
-      data: emotionTrend.value.map(item => item.bear_index)
-    },
-    {
-      name: '情绪温度',
-      type: 'line',
-      smooth: true,
-      itemStyle: { color: '#409EFF' },
-      data: emotionTrend.value.map(item => item.temperature)
-    }
+    buildLineSeries('看涨指数', chartColors.bull, emotionTrend.value.map(item => item.bull_index)),
+    buildLineSeries('看跌指数', chartColors.bear, emotionTrend.value.map(item => item.bear_index)),
+    buildLineSeries('情绪温度', chartColors.accent, emotionTrend.value.map(item => item.temperature))
   ]
 }))
 
 const pieChartOption = computed(() => {
   const summary = emotionSummary.value
-  const total = (summary.total_comments || 1)
-  return {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      bottom: '5%'
-    },
-    series: [
-      {
-        type: 'pie',
-        radius: ['40%', '70%'],
-        data: [
-          { value: summary.avg_bull_index || 33, name: '看涨', itemStyle: { color: '#67C23A' } },
-          { value: 100 - (summary.avg_bull_index || 33) - (summary.avg_bear_index || 33), name: '中性', itemStyle: { color: '#E6A23C' } },
-          { value: summary.avg_bear_index || 33, name: '看跌', itemStyle: { color: '#F56C6C' } }
-        ]
-      }
-    ]
-  }
+  return buildPieOption([
+    { value: summary.avg_bull_index || 33, name: '看涨', itemStyle: { color: chartColors.bull } },
+    { value: 100 - (summary.avg_bull_index || 33) - (summary.avg_bear_index || 33), name: '中性', itemStyle: { color: chartColors.neutral } },
+    { value: summary.avg_bear_index || 33, name: '看跌', itemStyle: { color: chartColors.bear } }
+  ])
 })
 
 // 方法
@@ -425,129 +392,69 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stock-detail {
-  min-height: 100%;
-}
-
-.info-card {
-  margin-bottom: 20px;
-}
+.stock-detail { min-height: 100%; }
+.info-card { margin-bottom: 16px; }
 
 .stock-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-
 .info-main {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-
 .info-main h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
+  color: var(--text-primary);
 }
-
 .stock-code {
-  color: #909399;
-  font-size: 16px;
+  color: var(--accent);
+  font-size: 15px;
+  font-family: var(--font-display);
 }
 
-.info-stats {
-  display: flex;
-  gap: 40px;
-}
+.info-stats { display: flex; gap: 40px; }
+.stat-item { text-align: center; }
+.stat-item .label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.stat-item .value { font-size: 20px; font-weight: bold; font-family: var(--font-display); }
+.stat-item .value.bull { color: var(--bull); }
+.stat-item .value.bear { color: var(--bear); }
 
-.stat-item {
-  text-align: center;
-}
-
-.stat-item .label {
-  display: block;
-  font-size: 12px;
-  color: #909399;
-  margin-bottom: 4px;
-}
-
-.stat-item .value {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.stat-item .value.bull {
-  color: #67C23A;
-}
-
-.stat-item .value.bear {
-  color: #F56C6C;
-}
-
-.chart-row {
-  margin-bottom: 20px;
-}
-
-.chart-card, .comment-card {
-  border-radius: 8px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.pagination-wrapper {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.profile-row {
-  margin-bottom: 20px;
-}
+.chart-row, .profile-row { margin-bottom: 16px; }
+.chart-card, .comment-card { border-radius: var(--radius-md); }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.pagination-wrapper { margin-top: 20px; display: flex; justify-content: flex-end; }
 
 .aspect-tags {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-base);
 }
-
 .aspect-item {
   display: flex;
   align-items: center;
   margin-bottom: 6px;
   font-size: 13px;
 }
-
-.aspect-name {
-  width: 50px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.aspect-count {
-  color: #909399;
-  font-size: 12px;
-}
+.aspect-name { width: 50px; font-weight: bold; color: var(--text-primary); }
+.aspect-count { color: var(--text-muted); font-size: 12px; }
 
 .profile-tags {
   text-align: center;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-base);
 }
-
-.profile-tag {
-  margin: 4px;
-}
-
+.profile-tag { margin: 4px; }
 .profile-stats {
   display: flex;
   justify-content: space-around;
   margin-top: 12px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
+  font-family: var(--font-display);
 }
 </style>

@@ -1,9 +1,9 @@
 <template>
   <div class="trend-page">
     <el-card class="filter-card">
-      <el-form :inline="true">
+      <el-form :inline="true" class="filter-form">
         <el-form-item label="股票">
-          <el-input v-model="stockCode" placeholder="输入股票代码" />
+          <el-input v-model="stockCode" placeholder="输入股票代码" style="width: 180px" />
         </el-form-item>
         <el-form-item label="时间范围">
           <el-date-picker
@@ -16,10 +16,10 @@
           />
         </el-form-item>
         <el-form-item label="粒度">
-          <el-select v-model="granularity">
-            <el-option label="小时" value="hour" />
-            <el-option label="日" value="day" />
-            <el-option label="周" value="week" />
+          <el-select v-model="granularity" style="width: 140px">
+            <el-option label="按小时" value="hour" />
+            <el-option label="按日" value="day" />
+            <el-option label="按周" value="week" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -27,15 +27,18 @@
         </el-form-item>
       </el-form>
     </el-card>
-    
+
     <el-card class="chart-card">
       <template #header>
         <span>情绪趋势分析</span>
       </template>
-      <v-chart :option="chartOption" autoresize style="height: 450px" />
+      <div v-if="trendData.length > 0">
+        <v-chart :option="chartOption" autoresize style="height: 450px" />
+      </div>
+      <el-empty v-else description="暂无趋势数据，请点击查询" :image-size="140" style="height: 450px; display: flex; align-items: center; justify-content: center;" />
     </el-card>
-    
-    <el-row :gutter="20">
+
+    <el-row :gutter="16">
       <el-col :span="12">
         <el-card>
           <template #header>
@@ -43,19 +46,19 @@
           </template>
           <el-descriptions :column="2" border>
             <el-descriptions-item label="平均看涨指数">
-              {{ stats.avgBull.toFixed(2) }}%
+              <span class="value-bull">{{ stats.avgBull.toFixed(2) }}%</span>
             </el-descriptions-item>
             <el-descriptions-item label="平均看跌指数">
-              {{ stats.avgBear.toFixed(2) }}%
+              <span class="value-bear">{{ stats.avgBear.toFixed(2) }}%</span>
             </el-descriptions-item>
             <el-descriptions-item label="最高看涨指数">
-              {{ stats.maxBull.toFixed(2) }}%
+              <span class="value-bull">{{ stats.maxBull.toFixed(2) }}%</span>
             </el-descriptions-item>
             <el-descriptions-item label="最高看跌指数">
-              {{ stats.maxBear.toFixed(2) }}%
+              <span class="value-bear">{{ stats.maxBear.toFixed(2) }}%</span>
             </el-descriptions-item>
             <el-descriptions-item label="平均情绪温度">
-              {{ stats.avgTemp.toFixed(2) }}
+              <span class="value-accent">{{ stats.avgTemp.toFixed(2) }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="数据点数">
               {{ trendData.length }}
@@ -75,10 +78,11 @@
                 {{ trendDirectionText }}
               </el-tag>
             </p>
+            <p v-else class="no-data-hint">查询数据后显示趋势分析</p>
             <p>
               <strong>波动率：</strong>
-              {{ volatility.toFixed(4) }}
-              <el-tag :type="volatility > 0.3 ? 'danger' : 'success'" size="small">
+              <span class="value-accent">{{ volatility.toFixed(4) }}</span>
+              <el-tag :type="volatility > 0.3 ? 'danger' : 'success'" size="small" style="margin-left: 8px">
                 {{ volatility > 0.3 ? '高波动' : '低波动' }}
               </el-tag>
             </p>
@@ -90,10 +94,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { emotionApi } from '@/api'
 import dayjs from 'dayjs'
+import { darkChartTheme, darkAxisStyle, chartColors, buildLineSeries } from '@/utils/chart-theme'
 
 const stockCode = ref('')
 const dateRange = ref([
@@ -110,7 +115,7 @@ const stats = computed(() => {
   const bulls = trendData.value.map(d => d.bull_index || 0)
   const bears = trendData.value.map(d => d.bear_index || 0)
   const temps = trendData.value.map(d => d.temperature || 0)
-  
+
   return {
     avgBull: bulls.reduce((a, b) => a + b, 0) / bulls.length,
     avgBear: bears.reduce((a, b) => a + b, 0) / bears.length,
@@ -146,38 +151,18 @@ const trendDirectionText = computed(() => {
 })
 
 const chartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['看涨指数', '看跌指数', '情绪温度'] },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+  ...darkChartTheme,
+  legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数', '情绪温度'] },
   xAxis: {
     type: 'category',
-    data: trendData.value.map(item => item.date)
+    data: trendData.value.map(item => item.date),
+    ...darkAxisStyle
   },
-  yAxis: { type: 'value', max: 100 },
+  yAxis: { type: 'value', max: 100, ...darkAxisStyle },
   series: [
-    {
-      name: '看涨指数',
-      type: 'line',
-      smooth: true,
-      itemStyle: { color: '#67C23A' },
-      areaStyle: { color: 'rgba(103, 194, 58, 0.2)' },
-      data: trendData.value.map(item => item.bull_index)
-    },
-    {
-      name: '看跌指数',
-      type: 'line',
-      smooth: true,
-      itemStyle: { color: '#F56C6C' },
-      areaStyle: { color: 'rgba(245, 108, 108, 0.2)' },
-      data: trendData.value.map(item => item.bear_index)
-    },
-    {
-      name: '情绪温度',
-      type: 'line',
-      smooth: true,
-      itemStyle: { color: '#409EFF' },
-      data: trendData.value.map(item => item.temperature)
-    }
+    buildLineSeries('看涨指数', chartColors.bull, trendData.value.map(item => item.bull_index), { area: true }),
+    buildLineSeries('看跌指数', chartColors.bear, trendData.value.map(item => item.bear_index), { area: true }),
+    buildLineSeries('情绪温度', chartColors.accent, trendData.value.map(item => item.temperature))
   ]
 }))
 
@@ -192,25 +177,29 @@ const fetchTrend = async () => {
     })
     trendData.value = res.data?.trend || []
   } catch (error) {
-    console.error('Fetch trend error:', error)
+    // 静默处理
   }
 }
+
+onMounted(() => {
+  fetchTrend()
+})
 </script>
 
 <style scoped>
-.trend-page {
-  min-height: 100%;
-}
-
-.filter-card {
-  margin-bottom: 20px;
-}
-
-.chart-card {
-  margin-bottom: 20px;
-}
+.trend-page { min-height: 100%; }
+.filter-card { margin-bottom: 16px; }
+.chart-card { margin-bottom: 16px; }
 
 .analysis-content {
-  line-height: 2;
+  line-height: 2.2;
+}
+.analysis-content strong {
+  color: var(--text-secondary);
+  margin-right: 8px;
+}
+.no-data-hint {
+  color: var(--text-muted);
+  font-size: 14px;
 }
 </style>

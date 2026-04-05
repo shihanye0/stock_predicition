@@ -41,26 +41,26 @@
               <div class="score-bars">
                 <div class="score-item">
                   <span>积极</span>
-                  <el-progress 
-                    :percentage="(result.scores?.positive || 0) * 100" 
+                  <el-progress
+                    :percentage="(result.scores?.positive || 0) * 100"
                     :stroke-width="15"
-                    color="#67C23A"
+                    color="#00e676"
                   />
                 </div>
                 <div class="score-item">
                   <span>中性</span>
-                  <el-progress 
-                    :percentage="(result.scores?.neutral || 0) * 100" 
+                  <el-progress
+                    :percentage="(result.scores?.neutral || 0) * 100"
                     :stroke-width="15"
-                    color="#E6A23C"
+                    color="#ffab40"
                   />
                 </div>
                 <div class="score-item">
                   <span>消极</span>
-                  <el-progress 
-                    :percentage="(result.scores?.negative || 0) * 100" 
+                  <el-progress
+                    :percentage="(result.scores?.negative || 0) * 100"
                     :stroke-width="15"
-                    color="#F56C6C"
+                    color="#ff5252"
                   />
                 </div>
               </div>
@@ -225,8 +225,9 @@ onMounted(() => {
 
 .result-content {
   padding: 16px;
-  background: #f5f7fa;
+  background: var(--bg-elevated);
   border-radius: 8px;
+  border: 1px solid var(--border-base);
 }
 
 .result-label {
@@ -237,7 +238,7 @@ onMounted(() => {
 }
 
 .confidence {
-  color: #909399;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -256,7 +257,7 @@ onMounted(() => {
 .score-item span {
   width: 40px;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .score-item .el-progress {

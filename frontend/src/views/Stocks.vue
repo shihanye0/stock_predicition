@@ -2,17 +2,24 @@
   <div class="stocks-page">
     <!-- 搜索筛选 -->
     <el-card class="filter-card">
-      <el-form :inline="true" :model="filters">
+      <el-form :inline="true" :model="filters" class="filter-form">
         <el-form-item label="股票搜索">
-          <el-input 
-            v-model="filters.keyword" 
+          <el-input
+            v-model="filters.keyword"
             placeholder="输入代码或名称"
             clearable
+            style="width: 200px"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
         <el-form-item label="市场">
-          <el-select v-model="filters.market" placeholder="全部" clearable>
+          <el-select
+            v-model="filters.market"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+            @change="handleSearch"
+          >
             <el-option label="上海" value="SH" />
             <el-option label="深圳" value="SZ" />
           </el-select>
@@ -80,7 +87,7 @@ const loading = ref(false)
 
 const filters = reactive({
   keyword: '',
-  market: ''
+  market: null
 })
 
 const pagination = reactive({
@@ -115,7 +122,7 @@ const handleSearch = () => {
 
 const resetFilters = () => {
   filters.keyword = ''
-  filters.market = ''
+  filters.market = null
   pagination.page = 1
   fetchStocks()
 }
@@ -140,17 +147,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stocks-page {
-  min-height: 100%;
-}
-
-.filter-card {
-  margin-bottom: 20px;
-}
-
-.table-card {
-  border-radius: 8px;
-}
+.stocks-page { min-height: 100%; }
+.filter-card { margin-bottom: 16px; }
+.table-card { border-radius: var(--radius-md); }
 
 .pagination-wrapper {
   margin-top: 20px;
@@ -161,8 +160,7 @@ onMounted(() => {
 :deep(.el-table__row) {
   cursor: pointer;
 }
-
 :deep(.el-table__row:hover) {
-  background-color: #f5f7fa;
+  background-color: var(--accent-soft) !important;
 }
 </style>

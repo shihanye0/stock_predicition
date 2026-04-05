@@ -1,9 +1,9 @@
 <template>
   <div class="validation-page">
     <el-card class="filter-card">
-      <el-form :inline="true">
+      <el-form :inline="true" class="filter-form">
         <el-form-item label="股票代码">
-          <el-input v-model="stockCode" placeholder="输入股票代码" />
+          <el-input v-model="stockCode" placeholder="输入股票代码" style="width: 180px" />
         </el-form-item>
         <el-form-item label="时间范围">
           <el-date-picker
@@ -75,7 +75,10 @@
       <template #header>
         <span>情绪与行情对比</span>
       </template>
-      <v-chart :option="chartOption" autoresize style="height: 400px" />
+      <div v-if="comparisonData.length > 0">
+        <v-chart :option="chartOption" autoresize style="height: 400px" />
+      </div>
+      <el-empty v-else description="点击分析按钮获取对比数据" :image-size="120" style="height: 400px; display: flex; align-items: center; justify-content: center;" />
     </el-card>
   </div>
 </template>
@@ -85,6 +88,7 @@ import { ref, computed } from 'vue'
 import VChart from 'vue-echarts'
 import { validationApi } from '@/api'
 import dayjs from 'dayjs'
+import { darkChartTheme, darkAxisStyle, chartColors, buildLineSeries } from '@/utils/chart-theme'
 
 const stockCode = ref('000001')
 const dateRange = ref([
@@ -99,32 +103,28 @@ const totalCount = ref(0)
 const comparisonData = ref([])
 
 const chartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['情绪强度', '涨跌幅'] },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+  ...darkChartTheme,
+  legend: { ...darkChartTheme.legend, data: ['情绪强度', '涨跌幅'] },
   xAxis: {
     type: 'category',
-    data: comparisonData.value.map(d => d.date)
+    data: comparisonData.value.map(d => d.date),
+    ...darkAxisStyle
   },
   yAxis: [
-    { type: 'value', name: '情绪强度', position: 'left', min: -1, max: 1 },
-    { type: 'value', name: '涨跌幅(%)', position: 'right' }
+    { type: 'value', name: '情绪强度', position: 'left', min: -1, max: 1, ...darkAxisStyle, nameTextStyle: { color: '#8b95a5' } },
+    { type: 'value', name: '涨跌幅(%)', position: 'right', ...darkAxisStyle, nameTextStyle: { color: '#8b95a5' } }
   ],
   series: [
     {
-      name: '情绪强度',
-      type: 'line',
-      smooth: true,
-      yAxisIndex: 0,
-      itemStyle: { color: '#409EFF' },
-      data: comparisonData.value.map(d => d.emotion_intensity)
+      ...buildLineSeries('情绪强度', chartColors.accent, comparisonData.value.map(d => d.emotion_intensity)),
+      yAxisIndex: 0
     },
     {
       name: '涨跌幅',
       type: 'bar',
       yAxisIndex: 1,
       itemStyle: {
-        color: (params) => params.value >= 0 ? '#F56C6C' : '#67C23A'
+        color: (params) => params.value >= 0 ? chartColors.bear : chartColors.bull
       },
       data: comparisonData.value.map(d => d.change_pct)
     }
@@ -132,11 +132,11 @@ const chartOption = computed(() => ({
 }))
 
 const getCorrelationColor = (val) => {
-  if (!val) return '#909399'
+  if (!val) return '#8b95a5'
   const abs = Math.abs(val)
-  if (abs >= 0.5) return '#67C23A'
-  if (abs >= 0.3) return '#E6A23C'
-  return '#909399'
+  if (abs >= 0.5) return '#00e676'
+  if (abs >= 0.3) return '#ffab40'
+  return '#8b95a5'
 }
 
 const getSignificanceType = (sig) => {
@@ -146,9 +146,9 @@ const getSignificanceType = (sig) => {
 }
 
 const getAccuracyColor = (percentage) => {
-  if (percentage >= 60) return '#67C23A'
-  if (percentage >= 50) return '#E6A23C'
-  return '#F56C6C'
+  if (percentage >= 60) return '#00e676'
+  if (percentage >= 50) return '#ffab40'
+  return '#ff5252'
 }
 
 const fetchValidation = async () => {
@@ -206,6 +206,12 @@ const fetchValidation = async () => {
   margin-bottom: 20px;
 }
 
+.filter-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .chart-card {
   margin-top: 20px;
 }
@@ -221,10 +227,13 @@ const fetchValidation = async () => {
 .accuracy-value {
   font-size: 28px;
   font-weight: bold;
+  color: var(--text-primary);
+  font-family: var(--font-display);
 }
 
 .accuracy-info {
   text-align: left;
   line-height: 2;
+  color: var(--text-secondary);
 }
 </style>

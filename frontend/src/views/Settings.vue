@@ -77,7 +77,7 @@
           </template>
           <el-form :model="crawlerForm" label-width="100px">
             <el-form-item label="平台">
-              <el-select v-model="crawlerForm.platform" placeholder="选择平台">
+              <el-select v-model="crawlerForm.platform" placeholder="选择平台" style="width: 200px">
                 <el-option label="东方财富" value="eastmoney" />
                 <el-option label="雪球" value="xueqiu" />
                 <el-option label="新浪财经" value="sina" />
@@ -267,8 +267,9 @@ onUnmounted(() => {
 
 .crawler-item {
   padding: 16px;
-  background: #f5f7fa;
+  background: var(--bg-elevated);
   border-radius: 8px;
+  border: 1px solid var(--border-base);
 }
 
 .crawler-info {
@@ -281,11 +282,12 @@ onUnmounted(() => {
 .platform-name {
   font-weight: bold;
   font-size: 16px;
+  color: var(--text-primary);
 }
 
 .crawler-stats {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
   margin-bottom: 12px;
   display: flex;
   gap: 16px;
@@ -303,6 +305,7 @@ onUnmounted(() => {
 .platform-stats h4 {
   margin-bottom: 12px;
   font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .platform-stats .el-progress {
