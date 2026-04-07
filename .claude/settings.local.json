@@ -14,7 +14,15 @@
       "Bash(head:*)",
       "Bash(cd \"E:/stock_predicition\" && python -u -c \"\nimport sys, io\nsys.stdout = io.TextIOWrapper\\(sys.stdout.buffer, encoding='utf-8'\\)\nfrom docx import Document\ndoc = Document\\('阎付浩然 河北金融学院2025届毕业论文开题报告.docx'\\)\nfor i, para in enumerate\\(doc.paragraphs\\):\n    text = para.text.strip\\(\\)\n    if text:\n        print\\(f'[{i}] {text}'\\)\nfor i, table in enumerate\\(doc.tables\\):\n    print\\(f'\\\\n=== TABLE {i} ==='\\)\n    for j, row in enumerate\\(table.rows\\):\n        cells = [cell.text.strip\\(\\) for cell in row.cells]\n        print\\(f'Row {j}: {\\\\\" | \\\\\".join\\(cells\\)}'\\)\n\" 2>&1)",
       "Bash(git rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(gh repo:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(mysql -uroot -proot stock_sentiment)",
+      "Bash(mysql -uroot stock_sentiment)",
+      "Bash(npm run:*)",
+      "Bash(wc -l e:/stock_predicition/frontend/src/views/*.vue)",
+      "Bash(find e:/stock_predicition/frontend/src/views -name \"*.vue\" -exec wc -l {} +)",
+      "Bash(python scripts/generate_demo_data.py)"
     ]
   }
 }
