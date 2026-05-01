@@ -148,6 +148,10 @@ const result = ref({})
 const batchResults = ref([])
 const modelStats = ref({})
 
+// 防抖定时器
+let analyzeTimer = null
+let batchTimer = null
+
 const getSentimentType = (label) => {
   if (label === 'positive') return 'success'
   if (label === 'negative') return 'danger'
@@ -160,18 +164,42 @@ const getSentimentLabel = (label) => {
   return '中性'
 }
 
+const handleError = (error, defaultMsg) => {
+  const status = error.response?.status
+  const message = error.response?.data?.detail || error.message
+
+  if (status === 429) {
+    ElMessage.warning('请求过于频繁，请稍后再试（每分钟限60次）')
+  } else if (status === 503) {
+    ElMessage.error('服务暂不可用，请稍后再试')
+  } else {
+    ElMessage.error(defaultMsg + ': ' + message)
+  }
+  console.error(defaultMsg + ':', error)
+}
+
 const analyzeText = async () => {
   if (!inputText.value.trim()) {
     ElMessage.warning('请输入文本')
     return
   }
-  
+
+  // 防抖：500ms内只允许一次请求
+  if (analyzeTimer) {
+    ElMessage.warning('操作太频繁，请稍后再试')
+    return
+  }
+  analyzeTimer = setTimeout(() => {
+    analyzeTimer = null
+  }, 500)
+
   analyzing.value = true
   try {
     const res = await sentimentApi.analyze(inputText.value)
     result.value = res.data || {}
   } catch (error) {
-    console.error('Analyze error:', error)
+    handleError(error, '分析失败')
+    result.value = {}
   } finally {
     analyzing.value = false
   }
@@ -183,13 +211,29 @@ const batchAnalyze = async () => {
     ElMessage.warning('请输入文本')
     return
   }
-  
+
+  if (texts.length > 50) {
+    ElMessage.warning('批量分析最多支持50条文本')
+    return
+  }
+
+  // 防抖：1秒内只允许一次请求
+  if (batchTimer) {
+    ElMessage.warning('操作太频繁，请稍后再试')
+    return
+  }
+  batchTimer = setTimeout(() => {
+    batchTimer = null
+  }, 1000)
+
   batchAnalyzing.value = true
   try {
     const res = await sentimentApi.batchAnalyze(texts)
     batchResults.value = res.data || []
+    ElMessage.success(`批量分析完成，共${texts.length}条`)
   } catch (error) {
-    console.error('Batch analyze error:', error)
+    handleError(error, '批量分析失败')
+    batchResults.value = []
   } finally {
     batchAnalyzing.value = false
   }

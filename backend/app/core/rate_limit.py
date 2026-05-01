@@ -35,9 +35,9 @@ class RateLimiter:
             "/api/v1/crawler/status": {"limit": 60, "window": 60},
             "/api/v1/crawler/stats": {"limit": 60, "window": 60},
             
-            # 情感分析 - 计算密集型
-            "/api/v1/sentiment/analyze": {"limit": 30, "window": 60},
-            "/api/v1/sentiment/batch": {"limit": 10, "window": 60},
+            # 情感分析 - 计算密集型但允许合理使用
+            "/api/v1/sentiment/analyze": {"limit": 60, "window": 60},
+            "/api/v1/sentiment/batch": {"limit": 20, "window": 60},
             
             # 股票数据 - 允许较高频率
             "/api/v1/stocks": {"limit": 60, "window": 60},

@@ -20,6 +20,40 @@
       </div>
     </div>
 
+    <!-- 数据初始化操作栏 -->
+    <div class="action-bar">
+      <el-space>
+        <el-button
+          type="primary"
+          :loading="loadingDemo"
+          @click="initDemoData"
+        >
+          <el-icon v-if="!loadingDemo"><TrendCharts /></el-icon>
+          生成演示数据
+        </el-button>
+        <el-button
+          :loading="loadingCrawl"
+          :disabled="crawlerStatus.is_running"
+          @click="startCrawl"
+        >
+          <el-icon v-if="!loadingCrawl && !crawlerStatus.is_running"><Upload /></el-icon>
+          爬取真实数据
+        </el-button>
+        <el-button
+          v-if="crawlerStatus.is_running || loadingCrawl"
+          type="danger"
+          :loading="loadingStop"
+          @click="stopCrawl"
+        >
+          <el-icon v-if="!loadingStop"><CircleClose /></el-icon>
+          停止爬虫
+        </el-button>
+      </el-space>
+      <span v-if="dataStatus.comments > 0" class="data-hint">
+        {{ dataStatus.stocks || 0 }}只股票 | {{ dataStatus.comments }}条评论
+      </span>
+    </div>
+
     <!-- 顶部统计卡片 -->
     <el-row :gutter="16" class="stat-cards">
       <el-col :span="6">
@@ -79,11 +113,21 @@
           <template #header>
             <div class="card-header">
               <span>情绪趋势</span>
-              <el-radio-group v-model="trendDays" size="small" @change="fetchTrend">
-                <el-radio-button :label="7">近7天</el-radio-button>
-                <el-radio-button :label="14">近14天</el-radio-button>
-                <el-radio-button :label="30">近30天</el-radio-button>
-              </el-radio-group>
+              <div class="trend-controls">
+                <el-radio-group v-model="trendDays" size="small" @change="fetchTrend">
+                  <el-radio-button :value="7">近7天</el-radio-button>
+                  <el-radio-button :value="14">近14天</el-radio-button>
+                  <el-radio-button :value="30">近30天</el-radio-button>
+                </el-radio-group>
+                <el-tooltip content="减少数据点以优化显示" placement="top">
+                  <el-select v-model="trendDensity" size="small" style="width: 80px; margin-left: 8px;" @change="handleDensityChange">
+                    <el-option label="全部" :value="0" />
+                    <el-option label="100条" :value="100" />
+                    <el-option label="50条" :value="50" />
+                    <el-option label="20条" :value="20" />
+                  </el-select>
+                </el-tooltip>
+              </div>
             </div>
           </template>
           <div v-if="trendData.length > 0">
@@ -152,10 +196,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import VChart from 'vue-echarts'
-import { emotionApi, alertApi } from '@/api'
+import { emotionApi, alertApi, adminApi, crawlerApi } from '@/api'
 import { darkChartTheme, darkAxisStyle, chartColors, buildLineSeries, buildPieOption } from '@/utils/chart-theme'
 
 const router = useRouter()
@@ -164,8 +209,15 @@ const overview = ref({})
 const trendData = ref([])
 const hotStocks = ref([])
 const trendDays = ref(7)
+const trendDensity = ref(0) // 0 means all data
 const recentAlerts = ref([])
 const alertStats = ref({})
+const dataStatus = ref({ comments: 0 })
+const loadingDemo = ref(false)
+const loadingCrawl = ref(false)
+const crawlerStatus = ref({ status: 'stopped' })
+const loadingStop = ref(false)
+let pollInterval = null
 
 const sentimentLabel = computed(() => {
   const sentiment = overview.value.market_sentiment
@@ -175,25 +227,38 @@ const sentimentLabel = computed(() => {
 })
 
 const totalComments = computed(() => {
-  return trendData.value.reduce((sum, item) => sum + (item.comment_count || 0), 0)
+  return dataStatus.value.comments || 0
 })
 
 // 趋势图表配置
-const trendChartOption = computed(() => ({
-  ...darkChartTheme,
-  legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数'] },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: trendData.value.map(item => item.date),
-    ...darkAxisStyle
-  },
-  yAxis: { type: 'value', max: 100, ...darkAxisStyle },
-  series: [
-    buildLineSeries('看涨指数', chartColors.bull, trendData.value.map(item => item.bull_index), { area: true }),
-    buildLineSeries('看跌指数', chartColors.bear, trendData.value.map(item => item.bear_index), { area: true })
-  ]
-}))
+const trendChartOption = computed(() => {
+  const trendLen = trendData.value.length
+  // 根据数据点数量动态调整X轴标签
+  const showAllLabels = trendLen <= 10
+  const axisLabelConfig = showAllLabels ? {} : { interval: 0, rotate: 45 }
+
+  return {
+    ...darkChartTheme,
+    legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数'] },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: trendData.value.map(item => item.date),
+      axisLabel: {
+        color: '#8b95a5',
+        ...axisLabelConfig
+      },
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+      axisTick: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.04)' } }
+    },
+    yAxis: { type: 'value', max: 100, ...darkAxisStyle },
+    series: [
+      buildLineSeries('看涨指数', chartColors.bull, trendData.value.map(item => item.bull_index), { area: true }),
+      buildLineSeries('看跌指数', chartColors.bear, trendData.value.map(item => item.bear_index), { area: true })
+    ]
+  }
+})
 
 // 饼图配置
 const pieChartOption = computed(() => {
@@ -215,7 +280,6 @@ const fetchOverview = async () => {
     const res = await emotionApi.getOverview()
     overview.value = res.data || {}
     hotStocks.value = res.data?.hot_stocks || []
-    trendData.value = res.data?.recent_trend || []
   } catch (error) {
     // 静默处理
   }
@@ -228,12 +292,23 @@ const fetchTrend = async () => {
     const res = await emotionApi.getTrend({
       start_date: startDate,
       end_date: endDate,
-      granularity: 'day'
+      granularity: 'day',
+      limit: trendDensity.value || undefined
     })
-    trendData.value = res.data?.trend || []
+    let trend = res.data?.trend || []
+    // Frontend sampling if backend doesn't support limit
+    if (trendDensity.value > 0 && trend.length > trendDensity.value) {
+      const step = Math.ceil(trend.length / trendDensity.value)
+      trend = trend.filter((_, i) => i % step === 0)
+    }
+    trendData.value = trend
   } catch (error) {
     // 静默处理
   }
+}
+
+const handleDensityChange = () => {
+  fetchTrend()
 }
 
 const goToStock = (code) => {
@@ -260,16 +335,149 @@ const dismissAlert = async (alert) => {
   } catch (e) { /* ignore */ }
 }
 
+const fetchDataStatus = async () => {
+  try {
+    const res = await adminApi.getDataStatus()
+    dataStatus.value = res.data || {}
+  } catch (error) {
+    // 静默处理
+  }
+}
+
+const initDemoData = async () => {
+  loadingDemo.value = true
+  try {
+    const res = await adminApi.initDemo()
+    if (res.data) {
+      const stocksAdded = res.data.stocks_added || 0
+      const stocksTotal = res.data.stocks_total || 0
+      const comments = res.data.comments || 0
+      let msg = `数据生成成功！`
+      if (stocksAdded > 0) {
+        msg += `新增 ${stocksAdded} 只股票，`
+      }
+      msg += `股票总数 ${stocksTotal}，评论 ${comments} 条`
+      ElMessage.success(msg)
+      // 刷新数据
+      await fetchDataStatus()
+      await fetchOverview()
+      await fetchTrend()
+    }
+  } catch (error) {
+    ElMessage.error('生成演示数据失败')
+  } finally {
+    loadingDemo.value = false
+  }
+}
+
+// 爬虫轮询间隔 3秒
+const POLL_INTERVAL_MS = 3000
+
+// 计算7天前的日期
+const getDateNDaysAgo = (days) => {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return date.toISOString().split('T')[0]
+}
+
+const startCrawl = async () => {
+  loadingCrawl.value = true
+  try {
+    const res = await adminApi.startCrawl({
+      platform: 'eastmoney',
+      stock_codes: [],
+      start_date: getDateNDaysAgo(7),
+      end_date: getDateNDaysAgo(0)
+    })
+    if (res.message) {
+      ElMessage.success(res.message)
+    } else {
+      ElMessage.info('爬虫任务已启动')
+    }
+    startPolling()
+  } catch (error) {
+    ElMessage.error('启动爬虫失败')
+  } finally {
+    loadingCrawl.value = false
+  }
+}
+
+const fetchCrawlerStatus = async () => {
+  try {
+    const { data } = await crawlerApi.getStatus('eastmoney') || {}
+    const isRunning = data?.is_running || data?.status === 'running'
+
+    crawlerStatus.value = {
+      status: data?.status || 'stopped',
+      is_running: isRunning
+    }
+
+    if (!isRunning) {
+      stopPolling()
+      await Promise.all([fetchDataStatus(), fetchOverview()])
+    }
+  } catch {
+    // ignore
+  }
+}
+
+const startPolling = () => {
+  fetchCrawlerStatus()
+  pollInterval = setInterval(fetchCrawlerStatus, POLL_INTERVAL_MS)
+}
+
+const stopPolling = () => {
+  clearInterval(pollInterval)
+  pollInterval = null
+}
+
+const stopCrawl = async () => {
+  loadingStop.value = true
+  try {
+    await crawlerApi.stop('eastmoney')
+    ElMessage.success('爬虫已停止')
+    stopPolling()
+    await Promise.all([fetchCrawlerStatus(), fetchDataStatus()])
+  } catch (error) {
+    ElMessage.error('停止爬虫失败')
+  } finally {
+    loadingStop.value = false
+  }
+}
+
 onMounted(() => {
+  fetchDataStatus()
   fetchOverview()
   fetchTrend()
   fetchAlerts()
+  fetchCrawlerStatus()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 </script>
 
 <style scoped>
 .dashboard {
   min-height: 100%;
+}
+
+/* ========== 操作栏 ========== */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+}
+
+.data-hint {
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 /* ========== 统计卡片 ========== */
@@ -360,6 +568,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.trend-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ========== 表格增强 ========== */

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__zai-mcp-server__diagnose_error_screenshot",
+      "Bash(python -c ':*)",
+      "Bash(python3)",
+      "Bash(python3 rewrite_script.py)",
+      "Bash(python3 -c ':*)",
+      "Bash(python3 rewrite_script2.py)",
+      "Bash(python3 do_rewrite.py)",
+      "Read(//c/Users/Lenovo/.claude/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Lenovo\\.claude"
+    ]
+  },
+  "env": {
+    "PATH": "C:\\Users\\Lenovo\\anaconda3\\envs\\finance;C:\\Users\\Lenovo\\anaconda3\\envs\\finance\\Scripts;C:\\Users\\Lenovo\\anaconda3\\Scripts;C:\\Users\\Lenovo\\anaconda3;$PATH"
+  }
+}

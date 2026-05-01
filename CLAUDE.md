@@ -13,6 +13,51 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Monitoring**: Prometheus + Grafana
 - **Deployment**: Docker Compose (6 services)
 
+## Quick Start
+
+### One-Click Startup (Recommended)
+
+Simply double-click `start.bat` in the project root directory. This will:
+1. Kill any existing processes on ports 8000 and 3000
+2. Start the backend on http://localhost:8000
+3. Start the frontend on http://localhost:3000
+
+**Note**: Requires conda environment `finance` with Python 3.10+.
+
+### Manual Startup
+
+If you need to start services manually:
+
+**Backend** (in cmd):
+```cmd
+cd /d E:\stock_predicition\backend
+C:\Users\Lenovo\anaconda3\envs\finance\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Frontend** (in another cmd):
+```cmd
+cd /d E:\stock_predicition\frontend
+npm run dev
+```
+
+## Admin API
+
+The system includes an admin API for data initialization:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/admin/data-status` | GET | Get current data statistics |
+| `/api/v1/admin/init-demo` | POST | Generate demo data |
+
+Example:
+```bash
+# Get data status
+curl http://localhost:8000/api/v1/admin/data-status
+
+# Generate demo data
+curl -X POST http://localhost:8000/api/v1/admin/init-demo
+```
+
 ## Development Commands
 
 ### Backend (Python/FastAPI)

@@ -78,17 +78,29 @@ class LexiconSentimentModel:
         pos_score = max(0, score) / total_abs
         neg_score = max(0, -score) / total_abs
         neu_score = 1.0 - pos_score - neg_score
-        
+
+        # 应用最小值并归一化
+        min_val = 0.01
+        pos_adjusted = max(pos_score, min_val)
+        neg_adjusted = max(neg_score, min_val)
+        neu_adjusted = max(neu_score, min_val)
+
+        # 重新归一化确保总和为1.0
+        total = pos_adjusted + neg_adjusted + neu_adjusted
+        pos_final = pos_adjusted / total
+        neg_final = neg_adjusted / total
+        neu_final = neu_adjusted / total
+
         elapsed = (time.time() - start) * 1000
-        
+
         return ModelResult(
             model_name=self.model_name,
             label=label,
             confidence=round(confidence, 4),
             scores={
-                "positive": round(max(pos_score, 0.01), 4),
-                "neutral": round(max(neu_score, 0.01), 4),
-                "negative": round(max(neg_score, 0.01), 4)
+                "positive": round(pos_final, 4),
+                "neutral": round(neu_final, 4),
+                "negative": round(neg_final, 4)
             },
             elapsed_ms=round(elapsed, 2)
         )

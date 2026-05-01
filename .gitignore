@@ -34,6 +34,9 @@ logs/
 backend/data/models/**/*.bin
 backend/data/models/**/*.pt
 backend/data/models/**/*.safetensors
+bert和bilstm/**/*.safetensors
+bert和bilstm/**/*.pt
+bert和bilstm/best_model/
 
 # 测试缓存
 .pytest_cache/

@@ -57,12 +57,17 @@
             <el-option label="中等" value="medium" />
             <el-option label="低危" value="low" />
           </el-select>
-          <el-select v-model="filters.alert_type" placeholder="预警类型" clearable @change="fetchAlerts" style="width: 140px">
+          <el-select v-model="filters.alert_type" placeholder="预警类型" clearable @change="fetchAlerts" style="width: 160px">
             <el-option label="情绪强度突变" value="intensity_spike" />
             <el-option label="看涨极端" value="bull_extreme" />
             <el-option label="看跌极端" value="bear_extreme" />
             <el-option label="评论量暴增" value="volume_surge" />
             <el-option label="温度异常" value="temperature_anomaly" />
+            <el-option label="趋势反转" value="sentiment_reversal" />
+            <el-option label="舆情爆发" value="burst_activity" />
+            <el-option label="行业联动" value="sector_linkage" />
+            <el-option label="波动率异常" value="volatility_anomaly" />
+            <el-option label="极值突破" value="new_high_low" />
           </el-select>
           <el-select v-model="filters.is_read" placeholder="已读状态" clearable @change="fetchAlerts" style="width: 120px">
             <el-option label="未读" :value="0" />
@@ -197,7 +202,12 @@ const getAlertTypeName = (type) => {
     'bull_extreme': '看涨极端',
     'bear_extreme': '看跌极端',
     'volume_surge': '评论暴增',
-    'temperature_anomaly': '温度异常'
+    'temperature_anomaly': '温度异常',
+    'sentiment_reversal': '趋势反转',
+    'burst_activity': '舆情爆发',
+    'sector_linkage': '行业联动',
+    'volatility_anomaly': '波动率异常',
+    'new_high_low': '极值突破'
   }
   return map[type] || type
 }

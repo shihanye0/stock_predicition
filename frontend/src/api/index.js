@@ -149,24 +149,42 @@ export const alertApi = {
   getAlerts(params) {
     return request.get('/v1/alerts', { params })
   },
-  
+
   // 标记已读
   markRead(alertId) {
     return request.put(`/v1/alerts/${alertId}/read`)
   },
-  
+
   // 全部标记已读
   markAllRead(params) {
     return request.put('/v1/alerts/read-all', null, { params })
   },
-  
+
   // 触发扫描
   scan(params) {
     return request.post('/v1/alerts/scan', null, { params })
   },
-  
+
   // 预警统计
   getStats(params) {
     return request.get('/v1/alerts/stats', { params })
+  }
+}
+
+// 管理员API
+export const adminApi = {
+  // 初始化演示数据
+  initDemo() {
+    return request.post('/v1/admin/init-demo')
+  },
+
+  // 获取数据状态
+  getDataStatus() {
+    return request.get('/v1/admin/data-status')
+  },
+
+  // 启动爬虫采集真实数据
+  startCrawl(data) {
+    return request.post('/v1/crawler/start', data)
   }
 }

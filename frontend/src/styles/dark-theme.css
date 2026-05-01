@@ -95,6 +95,7 @@ html, body, #app {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: visible !important;
 }
 
 /* 全局滚动条 */
@@ -124,6 +125,7 @@ html, body, #app {
   box-shadow: var(--shadow-sm) !important;
   color: var(--text-primary) !important;
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  overflow: visible !important;
 }
 .el-card:hover {
   border-color: var(--border-accent) !important;
@@ -137,6 +139,7 @@ html, body, #app {
 }
 .el-card__body {
   color: var(--text-primary) !important;
+  overflow: visible !important;
 }
 
 /* --- 按钮 --- */
@@ -310,12 +313,43 @@ html, body, #app {
   --el-pagination-bg-color: transparent;
   --el-pagination-text-color: var(--text-secondary);
   --el-pagination-hover-color: var(--accent);
+  pointer-events: auto !important;
+  visibility: visible !important;
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  position: relative !important;
+  z-index: 100 !important;
+  transform: none !important;
+  opacity: 1 !important;
+  min-height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 .el-pagination button,
 .el-pagination .el-pager li {
   background-color: var(--bg-elevated) !important;
   color: var(--text-secondary) !important;
   border-radius: var(--radius-sm) !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  margin: 0 2px !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 .el-pagination .el-pager li.is-active {
   background-color: var(--accent) !important;
@@ -323,6 +357,43 @@ html, body, #app {
 }
 .el-pagination .el-pager li:hover {
   color: var(--accent) !important;
+}
+.el-pagination .el-pager li.more {
+  pointer-events: auto !important;
+}
+.el-pagination .btn-prev,
+.el-pagination .btn-next {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  background-color: var(--bg-elevated) !important;
+}
+.el-pagination .btn-prev:disabled,
+.el-pagination .btn-next:disabled {
+  pointer-events: none !important;
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+.el-pagination .el-pager {
+  pointer-events: auto !important;
+  display: flex !important;
+  gap: 2px;
+}
+.el-pagination .el-pagination__jump {
+  pointer-events: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px;
+}
+.el-pagination .el-pagination__sizes {
+  pointer-events: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px;
 }
 
 /* --- 对话框 --- */

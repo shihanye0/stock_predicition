@@ -11,7 +11,7 @@ from app.core.database import init_db
 from app.core.rate_limit import RateLimitMiddleware, get_rate_limit_status
 from app.core.logging import RequestLoggingMiddleware
 from app.core.metrics import PrometheusMiddleware, metrics_endpoint
-from app.api import stocks, sentiment, emotion, validation, crawler, auth, experiment, alerts
+from app.api import stocks, sentiment, emotion, validation, crawler, auth, experiment, alerts, admin
 
 
 @asynccontextmanager
@@ -70,6 +70,7 @@ app.include_router(validation.router, prefix=settings.API_PREFIX, tags=["市场�
 app.include_router(crawler.router, prefix=settings.API_PREFIX, tags=["爬虫管理"])
 app.include_router(experiment.router, prefix=settings.API_PREFIX, tags=["实验对比"])
 app.include_router(alerts.router, prefix=settings.API_PREFIX, tags=["情绪预警"])
+app.include_router(admin.router, prefix=settings.API_PREFIX, tags=["管理员"])
 
 
 @app.get("/", tags=["健康检查"])

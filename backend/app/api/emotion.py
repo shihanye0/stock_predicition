@@ -37,7 +37,7 @@ async def get_emotion_overview(db: Session = Depends(get_db)):
         latest = emotions[-1]
         avg_bull = float(latest.avg_bull) if latest.avg_bull else 50
         avg_bear = float(latest.avg_bear) if latest.avg_bear else 50
-        
+
         if avg_bull > avg_bear + 10:
             market_sentiment = "bullish"
         elif avg_bear > avg_bull + 10:
@@ -48,18 +48,29 @@ async def get_emotion_overview(db: Session = Depends(get_db)):
         market_sentiment = "neutral"
         avg_bull = 50
         avg_bear = 50
-    
-    # 获取热门股票（按评论数排序）
-    hot_stocks = db.query(
+
+    # 查找最近有数据的日期
+    latest_date = db.query(func.max(Emotion.stat_date)).filter(
+        Emotion.stat_hour.is_(None)
+    ).scalar()
+
+    # 获取热门股票（按评论数排序）- 使用最近可用日期
+    hot_stocks_query = db.query(
         Emotion.stock_code,
         Stock.stock_name,
         Emotion.bull_index,
         Emotion.bear_index,
         Emotion.total_count
     ).join(Stock, Emotion.stock_code == Stock.stock_code).filter(
-        Emotion.stat_date == today,
         Emotion.stat_hour.is_(None)
-    ).order_by(Emotion.total_count.desc()).limit(10).all()
+    )
+
+    if latest_date:
+        hot_stocks_query = hot_stocks_query.filter(Emotion.stat_date == latest_date)
+    else:
+        hot_stocks_query = hot_stocks_query.filter(Emotion.stat_date == today)
+
+    hot_stocks = hot_stocks_query.order_by(Emotion.total_count.desc()).limit(10).all()
     
     # 构建趋势数据
     trend = []
@@ -95,6 +106,7 @@ async def get_emotion_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     granularity: str = Query("day", enum=["hour", "day", "week"]),
+    limit: Optional[int] = Query(None, ge=1, le=500, description="限制返回数据点数量，0或None表示返回全部"),
     db: Session = Depends(get_db)
 ):
     """获取情绪趋势数据"""
@@ -102,47 +114,96 @@ async def get_emotion_trend(
         end_date = date.today()
     if not start_date:
         start_date = end_date - timedelta(days=30)
-    
-    query = db.query(Emotion).filter(
-        Emotion.stat_date >= start_date,
-        Emotion.stat_date <= end_date
-    )
-    
-    if stock_code:
-        query = query.filter(Emotion.stock_code == stock_code)
-    
-    if granularity == "hour":
-        query = query.filter(Emotion.stat_hour.isnot(None))
+
+    # 当没有指定股票时，返回按日期聚合的市场平均情绪
+    if not stock_code:
+        query = db.query(
+            Emotion.stat_date,
+            func.avg(Emotion.bull_index).label('bull_index'),
+            func.avg(Emotion.bear_index).label('bear_index'),
+            func.avg(Emotion.intensity).label('intensity'),
+            func.avg(Emotion.temperature).label('temperature'),
+            func.sum(Emotion.total_count).label('total_count'),
+            func.sum(Emotion.positive_count).label('positive_count'),
+            func.sum(Emotion.neutral_count).label('neutral_count'),
+            func.sum(Emotion.negative_count).label('negative_count')
+        ).filter(
+            Emotion.stat_date >= start_date,
+            Emotion.stat_date <= end_date
+        )
+
+        if granularity == "hour":
+            query = query.filter(Emotion.stat_hour.isnot(None))
+            query = query.group_by(Emotion.stat_date, Emotion.stat_hour)
+        else:
+            query = query.filter(Emotion.stat_hour.is_(None))
+            query = query.group_by(Emotion.stat_date)
+
+        query = query.order_by(Emotion.stat_date, Emotion.stat_hour if granularity == "hour" else None)
+        emotions = query.all()
+
+        result = []
+        for e in emotions:
+            item = {
+                "date": e.stat_date.isoformat() if hasattr(e, 'stat_date') else str(e[0]),
+                "total_count": int(e.total_count) if e.total_count else 0,
+                "positive_count": int(e.positive_count) if e.positive_count else 0,
+                "neutral_count": int(e.neutral_count) if e.neutral_count else 0,
+                "negative_count": int(e.negative_count) if e.negative_count else 0,
+                "bull_index": round(float(e.bull_index), 2) if e.bull_index else 0,
+                "bear_index": round(float(e.bear_index), 2) if e.bear_index else 0,
+                "intensity": round(float(e.intensity), 4) if e.intensity else 0,
+                "temperature": round(float(e.temperature), 2) if e.temperature else 0
+            }
+            result.append(item)
+
     else:
-        query = query.filter(Emotion.stat_hour.is_(None))
-    
-    emotions = query.order_by(Emotion.stat_date, Emotion.stat_hour).all()
-    
-    result = []
-    for e in emotions:
-        item = {
-            "date": e.stat_date.isoformat(),
-            "stock_code": e.stock_code,
-            "total_count": e.total_count,
-            "positive_count": e.positive_count,
-            "neutral_count": e.neutral_count,
-            "negative_count": e.negative_count,
-            "bull_index": float(e.bull_index) if e.bull_index else 0,
-            "bear_index": float(e.bear_index) if e.bear_index else 0,
-            "intensity": float(e.intensity) if e.intensity else 0,
-            "temperature": float(e.temperature) if e.temperature else 0
-        }
-        if e.stat_hour is not None:
-            item["hour"] = e.stat_hour
-        result.append(item)
-    
+        # 指定了股票代码，返回该股票的数据
+        query = db.query(Emotion).filter(
+            Emotion.stock_code == stock_code,
+            Emotion.stat_date >= start_date,
+            Emotion.stat_date <= end_date
+        )
+
+        if granularity == "hour":
+            query = query.filter(Emotion.stat_hour.isnot(None))
+        else:
+            query = query.filter(Emotion.stat_hour.is_(None))
+
+        emotions = query.order_by(Emotion.stat_date, Emotion.stat_hour).all()
+
+        result = []
+        for e in emotions:
+            item = {
+                "date": e.stat_date.isoformat(),
+                "stock_code": e.stock_code,
+                "total_count": e.total_count,
+                "positive_count": e.positive_count,
+                "neutral_count": e.neutral_count,
+                "negative_count": e.negative_count,
+                "bull_index": float(e.bull_index) if e.bull_index else 0,
+                "bear_index": float(e.bear_index) if e.bear_index else 0,
+                "intensity": float(e.intensity) if e.intensity else 0,
+                "temperature": float(e.temperature) if e.temperature else 0
+            }
+            if e.stat_hour is not None:
+                item["hour"] = e.stat_hour
+            result.append(item)
+
+    # 如果指定了limit，进行均匀采样
+    if limit and limit > 0 and len(result) > limit:
+        step = len(result) / limit
+        result = [result[round(i * step)] for i in range(limit)]
+
     return Response(data={
         "period": {
             "start": start_date.isoformat(),
             "end": end_date.isoformat()
         },
         "granularity": granularity,
-        "trend": result
+        "trend": result,
+        "total_points": len(result),
+        "is_sampled": limit > 0 if limit else False
     })
 
 
@@ -155,7 +216,15 @@ async def get_emotion_ranking(
 ):
     """获取股票情绪排行榜"""
     today = date.today()
-    
+
+    # 查找最近有数据的日期
+    latest_date = db.query(func.max(Emotion.stat_date)).filter(
+        Emotion.stat_hour.is_(None)
+    ).scalar()
+
+    if not latest_date:
+        return ListResponse(data=[], total=0)
+
     query = db.query(
         Emotion.stock_code,
         Stock.stock_name,
@@ -165,7 +234,7 @@ async def get_emotion_ranking(
         Emotion.total_count,
         Emotion.temperature
     ).join(Stock, Emotion.stock_code == Stock.stock_code).filter(
-        Emotion.stat_date == today,
+        Emotion.stat_date == latest_date,
         Emotion.stat_hour.is_(None)
     )
     
@@ -199,6 +268,7 @@ async def get_stock_emotion(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     granularity: str = Query("day", enum=["hour", "day"]),
+    limit: Optional[int] = Query(None, ge=1, le=500, description="限制返回数据点数量"),
     db: Session = Depends(get_db)
 ):
     """获取指定股票的情绪数据"""
@@ -206,31 +276,36 @@ async def get_stock_emotion(
     stock = db.query(Stock).filter(Stock.stock_code == code).first()
     if not stock:
         return Response(code=404, message="Stock not found", data=None)
-    
+
     if not end_date:
         end_date = date.today()
     if not start_date:
         start_date = end_date - timedelta(days=30)
-    
+
     query = db.query(Emotion).filter(
         Emotion.stock_code == code,
         Emotion.stat_date >= start_date,
         Emotion.stat_date <= end_date
     )
-    
+
     if granularity == "hour":
         query = query.filter(Emotion.stat_hour.isnot(None))
     else:
         query = query.filter(Emotion.stat_hour.is_(None))
-    
+
     emotions = query.order_by(Emotion.stat_date, Emotion.stat_hour).all()
-    
-    # 计算汇总
+
+    # 如果指定了limit，进行均匀采样
+    if limit and limit > 0 and len(emotions) > limit:
+        step = len(emotions) / limit
+        emotions = [emotions[round(i * step)] for i in range(limit)]
+
+    # 计算汇总（基于原始数据）
     total_comments = sum(e.total_count for e in emotions)
     avg_bull = sum(float(e.bull_index or 0) for e in emotions) / len(emotions) if emotions else 0
     avg_bear = sum(float(e.bear_index or 0) for e in emotions) / len(emotions) if emotions else 0
     avg_intensity = sum(float(e.intensity or 0) for e in emotions) / len(emotions) if emotions else 0
-    
+
     # 构建趋势数据
     trend = []
     for e in emotions:

@@ -27,10 +27,41 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetFilters">重置</el-button>
+          <el-button type="success" @click="initDemoData" :loading="initLoading">
+            {{ stockList.length === 0 ? '初始化演示数据' : `补充数据 (当前${pagination.total}只)` }}
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
-    
+
+    <!-- 数据状态提示 -->
+    <el-alert
+      v-if="fetched && stockList.length === 0"
+      title="暂无股票数据"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="data-alert"
+    >
+      <template #default>
+        数据库中暂无股票数据，请点击上方「初始化演示数据」按钮生成示例数据。
+      </template>
+    </el-alert>
+
+    <el-alert
+      v-if="fetched && stockList.length > 0 && stockList.length < pagination.pageSize"
+      title="数据较少"
+      type="info"
+      :closable="false"
+      show-icon
+      class="data-alert"
+    >
+      <template #default>
+        当前共有 <strong>{{ pagination.total }}</strong> 条股票数据，已全部展示。
+        点击「补充数据」可生成更多示例数据。
+      </template>
+    </el-alert>
+
     <!-- 股票列表 -->
     <el-card class="table-card">
       <el-table 
@@ -77,13 +108,16 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { stockApi } from '@/api'
+import { ElMessage } from 'element-plus'
+import { stockApi, adminApi } from '@/api'
 
 const router = useRouter()
 
 // 数据
 const stockList = ref([])
 const loading = ref(false)
+const initLoading = ref(false)
+const fetched = ref(false)
 
 const filters = reactive({
   keyword: '',
@@ -99,6 +133,7 @@ const pagination = reactive({
 // 方法
 const fetchStocks = async () => {
   loading.value = true
+  fetched.value = false
   try {
     const res = await stockApi.getStocks({
       page: pagination.page,
@@ -108,10 +143,35 @@ const fetchStocks = async () => {
     })
     stockList.value = res.data || []
     pagination.total = res.total || 0
+    fetched.value = true
   } catch (error) {
     console.error('Fetch stocks error:', error)
+    fetched.value = true
   } finally {
     loading.value = false
+  }
+}
+
+// 初始化演示数据
+const initDemoData = async () => {
+  initLoading.value = true
+  try {
+    const res = await adminApi.initDemo()
+    const stocksAdded = res.data?.stocks_added || 0
+    const stocksTotal = res.data?.stocks_total || 0
+    if (stocksAdded > 0) {
+      ElMessage.success(`数据补充成功！新增 ${stocksAdded} 只股票，股票总数 ${stocksTotal}`)
+    } else {
+      ElMessage.success('演示数据更新成功')
+    }
+    // 刷新列表
+    pagination.page = 1
+    fetchStocks()
+  } catch (error) {
+    console.error('Init demo data error:', error)
+    ElMessage.error('初始化失败：' + (error.message || '请检查后端服务'))
+  } finally {
+    initLoading.value = false
   }
 }
 
@@ -149,12 +209,103 @@ onMounted(() => {
 <style scoped>
 .stocks-page { min-height: 100%; }
 .filter-card { margin-bottom: 16px; }
-.table-card { border-radius: var(--radius-md); }
+.table-card {
+  border-radius: var(--radius-md);
+  overflow: visible !important;
+}
+
+.data-alert {
+  margin-bottom: 16px;
+}
 
 .pagination-wrapper {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+  position: relative;
+  z-index: 100;
+  overflow: visible !important;
+}
+
+/* 分页组件全量样式修复 */
+:deep(.el-pagination) {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* 上一页/下一页按钮 */
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .btn-next) {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px !important;
+  height: 32px !important;
+  background-color: var(--bg-elevated) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+:deep(.el-pagination .btn-prev:disabled),
+:deep(.el-pagination .btn-next:disabled) {
+  pointer-events: none !important;
+  opacity: 0.5 !important;
+}
+
+/* 页码按钮 */
+:deep(.el-pagination .el-pager) {
+  pointer-events: auto !important;
+  display: flex !important;
+  gap: 4px;
+}
+
+:deep(.el-pagination .el-pager li) {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px !important;
+  height: 32px !important;
+  background-color: var(--bg-elevated) !important;
+  border-radius: var(--radius-sm) !important;
+  margin: 0 !important;
+}
+
+:deep(.el-pagination .el-pager li:hover) {
+  color: var(--accent) !important;
+}
+
+:deep(.el-pagination .el-pager li.is-active) {
+  background-color: var(--accent) !important;
+  color: var(--text-inverse) !important;
+}
+
+/* jumper 输入框 */
+:deep(.el-pagination .el-pagination__jump) {
+  pointer-events: auto !important;
+}
+
+:deep(.el-pagination .el-input) {
+  pointer-events: auto !important;
+}
+
+:deep(.el-pagination .el-input__wrapper) {
+  pointer-events: auto !important;
+  cursor: text !important;
+}
+
+/* sizes 选择器 */
+:deep(.el-pagination .el-pagination__sizes) {
+  pointer-events: auto !important;
+}
+
+:deep(.el-pagination .el-select) {
+  pointer-events: auto !important;
 }
 
 :deep(.el-table__row) {

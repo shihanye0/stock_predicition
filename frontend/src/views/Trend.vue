@@ -2,7 +2,13 @@
   <div class="trend-page">
     <el-card class="filter-card">
       <el-form :inline="true" class="filter-form">
-        <el-form-item label="股票">
+        <el-form-item label="数据模式">
+          <el-radio-group v-model="dataMode" size="default">
+            <el-radio-button value="market">市场平均</el-radio-button>
+            <el-radio-button value="stock">指定股票</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="dataMode === 'stock'" label="股票代码">
           <el-input v-model="stockCode" placeholder="输入股票代码" style="width: 180px" />
         </el-form-item>
         <el-form-item label="时间范围">
@@ -30,7 +36,7 @@
 
     <el-card class="chart-card">
       <template #header>
-        <span>情绪趋势分析</span>
+        <span>{{ chartTitle }}</span>
       </template>
       <div v-if="trendData.length > 0">
         <v-chart :option="chartOption" autoresize style="height: 450px" />
@@ -100,6 +106,8 @@ import { emotionApi } from '@/api'
 import dayjs from 'dayjs'
 import { darkChartTheme, darkAxisStyle, chartColors, buildLineSeries } from '@/utils/chart-theme'
 
+// 数据模式：market = 市场平均, stock = 指定股票
+const dataMode = ref('market')
 const stockCode = ref('')
 const dateRange = ref([
   dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
@@ -107,6 +115,14 @@ const dateRange = ref([
 ])
 const granularity = ref('day')
 const trendData = ref([])
+
+// 图表标题
+const chartTitle = computed(() => {
+  if (trendData.value.length === 0) return '情绪趋势分析'
+  if (dataMode.value === 'market') return '市场平均情绪趋势'
+  const code = stockCode.value || trendData.value[0]?.stock_code || '未知'
+  return `股票 ${code} 情绪趋势`
+})
 
 const stats = computed(() => {
   if (trendData.value.length === 0) {
@@ -150,27 +166,37 @@ const trendDirectionText = computed(() => {
   return '情绪平稳'
 })
 
-const chartOption = computed(() => ({
-  ...darkChartTheme,
-  legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数', '情绪温度'] },
-  xAxis: {
-    type: 'category',
-    data: trendData.value.map(item => item.date),
-    ...darkAxisStyle
-  },
-  yAxis: { type: 'value', max: 100, ...darkAxisStyle },
-  series: [
-    buildLineSeries('看涨指数', chartColors.bull, trendData.value.map(item => item.bull_index), { area: true }),
-    buildLineSeries('看跌指数', chartColors.bear, trendData.value.map(item => item.bear_index), { area: true }),
-    buildLineSeries('情绪温度', chartColors.accent, trendData.value.map(item => item.temperature))
-  ]
-}))
+const chartOption = computed(() => {
+  const trendLen = trendData.value.length
+  const showAllLabels = trendLen <= 10
+  const axisLabelConfig = showAllLabels ? {} : { interval: 0, rotate: 45 }
+
+  return {
+    ...darkChartTheme,
+    legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数', '情绪温度'] },
+    xAxis: {
+      type: 'category',
+      data: trendData.value.map(item => item.date),
+      axisLabel: { color: '#8b95a5', ...axisLabelConfig },
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+      axisTick: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.04)' } }
+    },
+    yAxis: { type: 'value', ...darkAxisStyle },
+    series: [
+      buildLineSeries('看涨指数', chartColors.bull, trendData.value.map(item => item.bull_index), { smooth: 0.3 }),
+      buildLineSeries('看跌指数', chartColors.bear, trendData.value.map(item => item.bear_index), { smooth: 0.3 }),
+      buildLineSeries('情绪温度', chartColors.accent, trendData.value.map(item => item.temperature), { smooth: 0.3 })
+    ]
+  }
+})
 
 const fetchTrend = async () => {
   try {
     const [startDate, endDate] = dateRange.value
     const res = await emotionApi.getTrend({
-      stock_code: stockCode.value || undefined,
+      // 只有在"指定股票"模式下才传递股票代码
+      stock_code: dataMode.value === 'stock' ? (stockCode.value || undefined) : undefined,
       start_date: startDate,
       end_date: endDate,
       granularity: granularity.value

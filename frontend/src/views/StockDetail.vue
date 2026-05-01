@@ -38,15 +38,25 @@
           <template #header>
             <div class="card-header">
               <span>情绪趋势</span>
-              <el-date-picker
-                v-model="dateRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                value-format="YYYY-MM-DD"
-                @change="handleDateChange"
-              />
+              <div class="trend-controls">
+                <el-date-picker
+                  v-model="dateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  value-format="YYYY-MM-DD"
+                  @change="handleDateChange"
+                />
+                <el-tooltip content="减少数据点以优化显示" placement="top">
+                  <el-select v-model="trendDensity" size="small" style="width: 80px; margin-left: 8px;" @change="fetchEmotion">
+                    <el-option label="全部" :value="0" />
+                    <el-option label="100条" :value="100" />
+                    <el-option label="50条" :value="50" />
+                    <el-option label="20条" :value="20" />
+                  </el-select>
+                </el-tooltip>
+              </div>
             </div>
           </template>
           <div v-if="emotionTrend.length > 0">
@@ -194,6 +204,8 @@ const dateRange = ref([
   dayjs().format('YYYY-MM-DD')
 ])
 
+const trendDensity = ref(0) // 0 means all data
+
 const commentFilters = reactive({
   platform: ''
 })
@@ -261,23 +273,36 @@ const getTagType = (tag) => {
 }
 
 // 图表配置
-const trendChartOption = computed(() => ({
-  ...darkChartTheme,
-  legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数', '情绪温度'] },
-  xAxis: {
-    type: 'category',
-    data: emotionTrend.value.map(item => item.date),
-    ...darkAxisStyle
-  },
-  yAxis: [
-    { type: 'value', max: 100, ...darkAxisStyle }
-  ],
-  series: [
-    buildLineSeries('看涨指数', chartColors.bull, emotionTrend.value.map(item => item.bull_index)),
-    buildLineSeries('看跌指数', chartColors.bear, emotionTrend.value.map(item => item.bear_index)),
-    buildLineSeries('情绪温度', chartColors.accent, emotionTrend.value.map(item => item.temperature))
-  ]
-}))
+const trendChartOption = computed(() => {
+  const trendLen = emotionTrend.value.length
+  // 根据数据点数量动态调整X轴标签
+  const showAllLabels = trendLen <= 10
+  const axisLabelConfig = showAllLabels ? {} : { interval: 0, rotate: 45 }
+
+  return {
+    ...darkChartTheme,
+    legend: { ...darkChartTheme.legend, data: ['看涨指数', '看跌指数', '情绪温度'] },
+    xAxis: {
+      type: 'category',
+      data: emotionTrend.value.map(item => item.date),
+      axisLabel: {
+        color: '#8b95a5',
+        ...axisLabelConfig
+      },
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+      axisTick: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.04)' } }
+    },
+    yAxis: [
+      { type: 'value', max: 100, ...darkAxisStyle }
+    ],
+    series: [
+      buildLineSeries('看涨指数', chartColors.bull, emotionTrend.value.map(item => item.bull_index)),
+      buildLineSeries('看跌指数', chartColors.bear, emotionTrend.value.map(item => item.bear_index)),
+      buildLineSeries('情绪温度', chartColors.accent, emotionTrend.value.map(item => item.temperature))
+    ]
+  }
+})
 
 const pieChartOption = computed(() => {
   const summary = emotionSummary.value
@@ -349,10 +374,18 @@ const fetchEmotion = async () => {
     const res = await stockApi.getStockEmotion(stockCode.value, {
       start_date: startDate,
       end_date: endDate,
-      granularity: 'day'
+      granularity: 'day',
+      limit: trendDensity.value || undefined
     })
     emotionData.value = res.data || {}
-    emotionTrend.value = res.data?.trend || []
+
+    let trend = res.data?.trend || []
+    // Frontend sampling if backend doesn't support limit
+    if (trendDensity.value > 0 && trend.length > trendDensity.value) {
+      const step = Math.ceil(trend.length / trendDensity.value)
+      trend = trend.filter((_, i) => i % step === 0)
+    }
+    emotionTrend.value = trend
   } catch (error) {
     console.error('Fetch emotion error:', error)
   }
@@ -426,6 +459,7 @@ onMounted(() => {
 .chart-row, .profile-row { margin-bottom: 16px; }
 .chart-card, .comment-card { border-radius: var(--radius-md); }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+.trend-controls { display: flex; align-items: center; gap: 8px; }
 .pagination-wrapper { margin-top: 20px; display: flex; justify-content: flex-end; }
 
 .aspect-tags {
