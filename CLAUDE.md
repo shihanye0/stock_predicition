@@ -455,4 +455,101 @@ Defined in `backend/app/celery_app.py`:
 - Rate limiting prevents API abuse
 - Input validation with Pydantic schemas
 
+## Git & GitHub 操作经验
+
+### Git 路径配置（Windows 环境）
+
+当前环境 Git 安装路径：`E:/Git/bin/git.exe`
+
+使用方式：
+```bash
+cd E:/stock_predicition && E:/Git/bin/git.exe <command>
+```
+
+### 远程仓库 URL 协议问题
+
+**问题**：`git://github.com/xxx` 是只读协议，无法推送。
+
+**解决**：必须改为 `https://github.com/xxx`
+```bash
+E:/Git/bin/git.exe remote set-url origin https://github.com/shihanye0/stock_predicition.git
+```
+
+### GitHub 大文件限制
+
+**限制**：GitHub 单文件限制 100MB，超出会被拒绝。
+
+**常见大文件**：
+- `.safetensors` / `.pt` / `.bin` 模型文件
+- `.png` / `.jpg` 图片（超过 50MB）
+- 压缩包 / 二进制文件
+
+### 处理大文件的正确流程
+
+1. **提交前检查**：估算文件大小，避免已提交后发现问题
+2. **添加到 .gitignore**：大文件目录和扩展名应预先排除
+   ```gitignore
+   # 模型大文件
+   bert和bilstm/**/*.safetensors
+   bert和bilstm/**/*.pt
+   bert和bilstm/best_model/
+   backend/data/models/**/*.bin
+   backend/data/models/**/*.pt
+   backend/data/models/**/*.safetensors
+   ```
+3. **移除已提交的大文件**：
+   ```bash
+   E:/Git/bin/git.exe rm -r --cached <大文件目录>
+   E:/Git/bin/git.exe commit --amend --no-edit
+   ```
+4. **推送**：
+   ```bash
+   E:/Git/bin/git.exe push -u origin main
+   ```
+
+### GitHub Personal Access Token 配置
+
+**方法 1：嵌入 URL（临时方案）**
+```bash
+E:/Git/bin/git.exe remote set-url origin https://username:TOKEN@github.com/username/repo.git
+```
+
+**方法 2：凭证存储（推荐）**
+```bash
+# 1. 创建凭证文件
+echo "https://username:TOKEN@github.com" > ~/.git-credentials
+
+# 2. 启用凭证助手
+E:/Git/bin/git.exe config --global credential.helper store
+```
+
+### 完整提交流程（避免踩坑）
+
+```bash
+# 1. 检查远程 URL 是否为 https
+E:/Git/bin/git.exe remote -v
+
+# 2. 检查将要提交的文件大小（避免超过 100MB）
+# 特别关注 .safetensors, .pt, .bin 等模型文件
+
+# 3. 确保 .gitignore 正确配置，排除大文件
+
+# 4. 暂存文件
+E:/Git/bin/git.exe add -A
+
+# 5. 创建提交
+E:/Git/bin/git.exe commit -m "提交消息"
+
+# 6. 推送到 GitHub（确保 Token 已配置）
+E:/Git/bin/git.exe push -u origin main
+```
+
+### 快速验证清单
+
+- [ ] 远程 URL 是 `https://` 而非 `git://`
+- [ ] 大模型文件（>100MB）已排除
+- [ ] .gitignore 已更新
+- [ ] 凭证（Token）已配置
+- [ ] 本地已与远程同步（无落后提交）
+
 1.称呼规则: 每次回复用中文回答我的问题，每次回复前必须使用"Boss"作为称呼。2. 决策确认: 遇到不确定的代码设计问题时，必须先询问 Boss，不得直接行动。3. 代码兼容性: 不能写兼容性代码，除非 Boss 主动要求。 4.每完成一个板块的内容后，可写一个markdown文件，命名格式为今天日期-名称；保存在根目录下。介绍当前的进度和当前模块的功能与实现方法，可以更方便的了解系统状态。
